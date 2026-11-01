@@ -1,63 +1,38 @@
-# 📈 Algorithmic Trading Backtester
+# Ad Campaign Funnel & Bidding Strategy A/B Test Analysis
 
-A quantitative finance tool that backtests a **Moving Average Crossover Strategy** on any stock using real historical data.
+Analyzes a real 40-day Facebook Ads A/B test comparing two bidding strategies — **Maximum Bidding**
+(control) vs **Average Bidding** (test) — using the full funnel (Impression → Click → Purchase →
+Earning) and proper statistical significance testing.
 
-## 🚀 Live Demo
-> Deploy on [Streamlit Cloud](https://streamlit.io/cloud) — free in 2 minutes
+## What this project does
+- Builds funnel metrics: CTR (Impression→Click), CVR (Click→Purchase), RPM (revenue per 1,000 impressions)
+- Visualizes the cumulative funnel, daily distributions, and funnel-efficiency (CTR vs CVR) by strategy
+- Tests normality (Shapiro-Wilk) to select the correct significance test per metric
+- Runs independent t-tests / Mann-Whitney U tests on Purchases, Earnings, CTR, and CVR
+- Translates statistical results into a business recommendation
 
-## 📊 Features
-- Moving Average Crossover strategy (configurable short/long SMA)
-- Real-time stock data via Yahoo Finance API
-- Key risk metrics: **Sharpe Ratio**, **Max Drawdown**, **Total Return**
-- Buy/Sell signal visualization on price chart
-- Portfolio value tracking vs Buy & Hold benchmark
-- Full trade log
+## Key finding
+Average Bidding converts less top-of-funnel traffic (lower CTR) but converts it far more efficiently
+(higher CVR), producing a statistically significant **+31.8% lift in revenue** (p < 0.001) even though
+the difference in raw purchase counts alone was not statistically significant. Recommendation: switch
+to Average Bidding.
 
-## 🛠️ Tech Stack
-- **Python** — Core logic
-- **yfinance** — Real market data
-- **Pandas / NumPy** — Data processing & metrics
-- **Matplotlib** — Charting
-- **Streamlit** — Interactive dashboard
+## Files
+- `Ad_Campaign_Bidding_AB_Test_Analysis.ipynb` — full notebook with analysis, charts, and write-up
+- `analysis.py` — script version of the same analysis
+- `ab_testing.xlsx` — source dataset (Control/Test sheets, 40 daily observations each)
+- `chart_funnel.png`, `chart_distributions.png`, `chart_ctr_cvr.png` — exported visualizations
+- `summary_metrics.csv`, `funnel_totals.csv`, `significance_results.csv` — exported result tables
 
-## ⚙️ How to Run Locally
+## Dataset
+Public dataset from [ugursaricam/AB_testing_with_python](https://github.com/ugursaricam/AB_testing_with_python)
+(Impression, Click, Purchase, Earning; Control = Maximum Bidding, Test = Average Bidding).
 
+## Tools
+Python, Pandas, NumPy, SciPy (Shapiro-Wilk, Levene's test, t-test, Mann-Whitney U), Matplotlib, Jupyter.
+
+## How to run
 ```bash
-# 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/trading-backtester
-cd trading-backtester
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Run the app
-streamlit run backtester.py
-```
-
-## 📐 Strategy Logic
-
-```
-BUY  signal → when Short SMA crosses ABOVE Long SMA
-SELL signal → when Short SMA crosses BELOW Long SMA
-```
-
-## 📈 Metrics Explained
-| Metric | What it means |
-|--------|--------------|
-| Sharpe Ratio | Return per unit of risk (higher = better) |
-| Max Drawdown | Worst peak-to-trough loss |
-| Total Return | Overall % gain/loss |
-
-## 🔧 Possible Improvements
-- Add RSI / Bollinger Bands strategies
-- Add transaction cost modeling
-- Add position sizing (Kelly Criterion)
-- Add multi-stock portfolio backtesting
-
-## 📁 Project Structure
-```
-trading-backtester/
-├── backtester.py      # Main app
-├── requirements.txt   # Dependencies
-└── README.md          # This file
+pip install pandas numpy scipy matplotlib openpyxl jupyter
+jupyter notebook Ad_Campaign_Bidding_AB_Test_Analysis.ipynb
 ```
