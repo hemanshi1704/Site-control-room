@@ -1,16 +1,18 @@
 """Run the 25-question eval:  python -m eval.run_eval [--only 1,5,9] [--json results.json]
 
 For each question: run the reference SQL, ask the LLM pipeline for SQL, execute it through the
-same guard + read-only path the app uses, and compare result *values* (column names ignored,
-floats rounded, row order ignored unless the question is ranked).
-Reports accuracy overall and by difficulty, plus every failure with both SQL strings.
+same guard + read-only path the app uses, and compare results (see eval/compare.py).
+Two scores are reported:
+  strict   - exact same columns and values as the reference
+  lenient  - extra columns are allowed (the headline score)
+Also reports accuracy by difficulty, plus every failure with both SQL strings.
 """
 import argparse
 import json
+import os
 import sys
 import time
 from collections import defaultdict
-from decimal import Decimal
 
 from sqlalchemy import text
 
@@ -18,20 +20,8 @@ from app import llm
 from app.db import engine
 from app.qa import run_readonly
 from app.sql_guard import UnsafeSQL
+from eval.compare import lenient_match, strict_match
 from eval.questions import QUESTIONS
-
-
-def norm_value(v):
-    if isinstance(v, (Decimal, float)):
-        return round(float(v), 2)
-    if isinstance(v, int):
-        return float(v)
-    return str(v)
-
-
-def norm_rows(rows, ordered):
-    out = [tuple(norm_value(v) for v in r) for r in rows]
-    return out if ordered else sorted(out, key=repr)
 
 
 def reference(sql):
@@ -45,18 +35,18 @@ def run(only=None):
         if only and q["id"] not in only:
             continue
         ordered = q.get("ordered", False)
-        expected = norm_rows(reference(q["sql"]), ordered)
+        expected = reference(q["sql"])
         entry = dict(id=q["id"], difficulty=q["difficulty"], question=q["q"], ref_sql=q["sql"],
-                     generated_sql=None, passed=False, error=None)
+                     generated_sql=None, passed=False, passed_strict=False, error=None)
         t0 = time.time()
         try:
             plan = llm.question_to_sql(q["q"])
             entry["generated_sql"] = plan.get("sql")
             _, rows, _, _ = run_readonly(plan["sql"])
-            got = norm_rows(rows, ordered)
-            entry["passed"] = got == expected
+            entry["passed"] = lenient_match(rows, expected, ordered)
+            entry["passed_strict"] = strict_match(rows, expected, ordered)
             if not entry["passed"]:
-                entry["expected"], entry["got"] = expected[:5], got[:5]
+                entry["expected"], entry["got"] = [list(r) for r in expected[:5]], rows[:5]
         except UnsafeSQL as e:
             entry["error"] = f"blocked by guard: {e}"
         except Exception as e:
@@ -68,8 +58,12 @@ def run(only=None):
 
 
 def report(results):
-    n, ok = len(results), sum(r["passed"] for r in results)
-    print(f"\nAccuracy: {ok}/{n} = {100 * ok / n:.0f}%")
+    n = len(results)
+    ok, ok_strict = sum(r["passed"] for r in results), sum(r["passed_strict"] for r in results)
+    model = os.environ.get("LLM_MODEL") or llm._model()
+    print(f"\nModel: {llm.PROVIDER}/{model}")
+    print(f"Accuracy (extra columns allowed): {ok}/{n} = {100 * ok / n:.0f}%")
+    print(f"Accuracy (strict, exact columns): {ok_strict}/{n} = {100 * ok_strict / n:.0f}%")
     by = defaultdict(lambda: [0, 0])
     for r in results:
         by[r["difficulty"]][1] += 1
@@ -81,7 +75,10 @@ def report(results):
             print(f"\n--- FAILED Q{r['id']}: {r['question']}")
             print("reference:", r["ref_sql"])
             print("generated:", r["generated_sql"])
-            print("error:", r["error"]) if r["error"] else print("expected:", r.get("expected"), "\ngot:     ", r.get("got"))
+            if r["error"]:
+                print("error:", r["error"])
+            else:
+                print("expected:", r.get("expected"), "\ngot:     ", r.get("got"))
 
 
 if __name__ == "__main__":

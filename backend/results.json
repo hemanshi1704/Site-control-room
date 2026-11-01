@@ -4,21 +4,11 @@
     "difficulty": 2,
     "question": "Which site lost the most hours to rain this month?",
     "ref_sql": "SELECT s.name FROM daily_logs d JOIN sites s ON s.id=d.site_id WHERE d.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name ORDER BY SUM(d.rain_hours_lost) DESC LIMIT 1",
-    "generated_sql": "WITH rain_agg AS (SELECT site_id, SUM(rain_hours_lost) AS total_rain_hours FROM daily_logs WHERE log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY site_id) SELECT s.name, rain_agg.total_rain_hours FROM rain_agg JOIN sites s ON s.id = rain_agg.site_id ORDER BY rain_agg.total_rain_hours DESC LIMIT 1",
-    "passed": false,
+    "generated_sql": "SELECT s.name, SUM(d.rain_hours_lost) AS total_rain_hours FROM daily_logs d JOIN sites s ON d.site_id = s.id WHERE d.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name ORDER BY total_rain_hours DESC LIMIT 1",
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "Udaipur Lake Villas"
-      ]
-    ],
-    "got": [
-      [
-        "Udaipur Lake Villas",
-        31.5
-      ]
-    ],
-    "seconds": 8.4
+    "seconds": 8.0
   },
   {
     "id": 2,
@@ -27,18 +17,20 @@
     "ref_sql": "SELECT SUM(rain_hours_lost) FROM daily_logs WHERE log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "generated_sql": "SELECT SUM(rain_hours_lost) AS total_rain_hours_lost FROM daily_logs WHERE log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 2.3
+    "seconds": 2.1
   },
   {
     "id": 3,
     "difficulty": 2,
     "question": "How many rainy days did each site have in October?",
     "ref_sql": "SELECT s.name, COUNT(*) FROM daily_logs d JOIN sites s ON s.id=d.site_id WHERE d.weather='rain' AND d.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name",
-    "generated_sql": "SELECT s.name AS site, COUNT(*) AS rainy_days FROM daily_logs dl JOIN sites s ON dl.site_id = s.id WHERE dl.weather = 'rain' AND dl.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name ORDER BY rainy_days DESC",
+    "generated_sql": "SELECT s.name, COUNT(*) AS rainy_days FROM daily_logs dl JOIN sites s ON dl.site_id = s.id WHERE dl.weather = 'rain' AND dl.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 2.1
+    "seconds": 2.0
   },
   {
     "id": 4,
@@ -46,20 +38,10 @@
     "question": "Which date had the most rain hours lost across all sites combined?",
     "ref_sql": "SELECT log_date FROM daily_logs GROUP BY log_date ORDER BY SUM(rain_hours_lost) DESC LIMIT 1",
     "generated_sql": "SELECT log_date, SUM(rain_hours_lost) AS total_rain_hours FROM daily_logs GROUP BY log_date ORDER BY total_rain_hours DESC LIMIT 1",
-    "passed": false,
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "2026-10-31"
-      ]
-    ],
-    "got": [
-      [
-        "2026-10-31",
-        14.5
-      ]
-    ],
-    "seconds": 2.2
+    "seconds": 2.1
   },
   {
     "id": 5,
@@ -68,39 +50,31 @@
     "ref_sql": "SELECT AVG(rain_hours_lost) FROM daily_logs WHERE weather='rain' AND log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "generated_sql": "SELECT AVG(rain_hours_lost) AS avg_rain_hours_lost FROM daily_logs WHERE weather='rain' AND log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 2.5
+    "seconds": 2.0
   },
   {
     "id": 6,
     "difficulty": 3,
     "question": "Which month had the most rain hours lost overall?",
     "ref_sql": "SELECT to_char(log_date,'YYYY-MM') FROM daily_logs GROUP BY 1 ORDER BY SUM(rain_hours_lost) DESC LIMIT 1",
-    "generated_sql": "WITH monthly AS (SELECT date_trunc('month', log_date)::date AS month_start, SUM(rain_hours_lost) AS total_rain_hours FROM daily_logs GROUP BY month_start) SELECT to_char(month_start,'YYYY-MM') AS month, total_rain_hours FROM monthly ORDER BY total_rain_hours DESC LIMIT 1",
-    "passed": false,
+    "generated_sql": "WITH monthly_rain AS ( SELECT date_trunc('month', log_date)::date AS month_start, SUM(rain_hours_lost) AS total_rain_hours FROM daily_logs GROUP BY date_trunc('month', log_date) ) SELECT TO_CHAR(month_start,'YYYY-MM') AS month, total_rain_hours FROM monthly_rain ORDER BY total_rain_hours DESC LIMIT 1",
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "2026-10"
-      ]
-    ],
-    "got": [
-      [
-        "2026-10",
-        133.5
-      ]
-    ],
-    "seconds": 4.4
+    "seconds": 2.4
   },
   {
     "id": 7,
     "difficulty": 3,
     "question": "How many sites lost more than 20 hours to rain in October?",
     "ref_sql": "SELECT COUNT(*) FROM (SELECT site_id FROM daily_logs WHERE log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY site_id HAVING SUM(rain_hours_lost) > 20) t",
-    "generated_sql": "SELECT COUNT(*) AS sites_with_rain_loss FROM (SELECT site_id FROM daily_logs WHERE log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY site_id HAVING SUM(rain_hours_lost) > 20) AS sub",
+    "generated_sql": "SELECT COUNT(*) AS sites_with_rain_loss FROM (SELECT site_id FROM daily_logs WHERE log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY site_id HAVING SUM(rain_hours_lost) > 20) sub",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 8.1
+    "seconds": 1.9
   },
   {
     "id": 8,
@@ -109,8 +83,9 @@
     "ref_sql": "SELECT COUNT(*) FROM sites WHERE status='at_risk'",
     "generated_sql": "SELECT COUNT(*) AS at_risk_sites FROM sites WHERE status = 'at_risk'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 2.2
+    "seconds": 1.9
   },
   {
     "id": 9,
@@ -119,8 +94,9 @@
     "ref_sql": "SELECT name FROM sites WHERE status='delayed'",
     "generated_sql": "SELECT name FROM sites WHERE status = 'delayed'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 1.8
+    "seconds": 2.5
   },
   {
     "id": 10,
@@ -128,30 +104,21 @@
     "question": "Which site has the highest progress percentage?",
     "ref_sql": "SELECT name FROM sites ORDER BY progress_pct DESC LIMIT 1",
     "generated_sql": "SELECT name, progress_pct FROM sites ORDER BY progress_pct DESC LIMIT 1",
-    "passed": false,
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "Bikaner Logistics Hub"
-      ]
-    ],
-    "got": [
-      [
-        "Bikaner Logistics Hub",
-        70.0
-      ]
-    ],
-    "seconds": 2.0
+    "seconds": 1.6
   },
   {
     "id": 11,
     "difficulty": 2,
     "question": "Which site is furthest behind its planned progress?",
     "ref_sql": "SELECT name FROM sites ORDER BY (planned_pct - progress_pct) DESC LIMIT 1",
-    "generated_sql": "WITH diffs AS ( SELECT name, (planned_pct - progress_pct) AS behind FROM sites ) SELECT name FROM diffs ORDER BY behind DESC LIMIT 1",
+    "generated_sql": "WITH diffs AS (SELECT name, (planned_pct - progress_pct) AS behind_pct FROM sites) SELECT name, behind_pct FROM diffs ORDER BY behind_pct DESC LIMIT 1",
     "passed": true,
+    "passed_strict": false,
     "error": null,
-    "seconds": 2.3
+    "seconds": 2.2
   },
   {
     "id": 12,
@@ -160,8 +127,9 @@
     "ref_sql": "SELECT COUNT(*) FROM sites WHERE planned_end BETWEEN '2026-10-31' AND '2026-12-30'",
     "generated_sql": "SELECT COUNT(*) AS sites_scheduled_to_finish FROM sites WHERE planned_end BETWEEN '2026-10-31' AND '2026-12-30'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 2.9
+    "seconds": 2.2
   },
   {
     "id": 13,
@@ -169,20 +137,10 @@
     "question": "Which site has the largest budget?",
     "ref_sql": "SELECT name FROM sites ORDER BY budget_inr DESC LIMIT 1",
     "generated_sql": "SELECT name, budget_inr FROM sites ORDER BY budget_inr DESC LIMIT 1",
-    "passed": false,
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "Jaipur Riverside Towers"
-      ]
-    ],
-    "got": [
-      [
-        "Jaipur Riverside Towers",
-        480000000.0
-      ]
-    ],
-    "seconds": 2.2
+    "seconds": 1.8
   },
   {
     "id": 14,
@@ -191,8 +149,9 @@
     "ref_sql": "SELECT SUM(budget_inr) FROM sites WHERE status='at_risk'",
     "generated_sql": "SELECT SUM(budget_inr) AS total_budget FROM sites WHERE status = 'at_risk'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 1.8
+    "seconds": 1.9
   },
   {
     "id": 15,
@@ -201,6 +160,7 @@
     "ref_sql": "SELECT COUNT(*) FROM milestones WHERE actual_date IS NULL AND planned_date < '2026-10-31'",
     "generated_sql": "SELECT COUNT(*) AS overdue_count FROM milestones WHERE planned_date < '2026-10-31' AND actual_date IS NULL",
     "passed": true,
+    "passed_strict": true,
     "error": null,
     "seconds": 2.1
   },
@@ -209,10 +169,11 @@
     "difficulty": 3,
     "question": "Which site has the most overdue milestones?",
     "ref_sql": "SELECT s.name FROM milestones m JOIN sites s ON s.id=m.site_id WHERE m.actual_date IS NULL AND m.planned_date < '2026-10-31' GROUP BY s.name ORDER BY COUNT(*) DESC, s.name LIMIT 1",
-    "generated_sql": "WITH overdue_counts AS ( SELECT s.name, COUNT(m.id) AS overdue_cnt FROM sites s JOIN milestones m ON m.site_id = s.id WHERE m.planned_date < '2026-10-31' AND m.actual_date IS NULL GROUP BY s.name ) SELECT name FROM overdue_counts ORDER BY overdue_cnt DESC LIMIT 1",
+    "generated_sql": "SELECT s.name, COUNT(m.id) AS overdue_count FROM sites s JOIN milestones m ON m.site_id = s.id WHERE m.planned_date < '2026-10-31' AND m.actual_date IS NULL GROUP BY s.name ORDER BY overdue_count DESC LIMIT 1",
     "passed": true,
+    "passed_strict": false,
     "error": null,
-    "seconds": 2.8
+    "seconds": 2.6
   },
   {
     "id": 17,
@@ -221,18 +182,20 @@
     "ref_sql": "SELECT COUNT(*) FROM milestones WHERE actual_date > planned_date",
     "generated_sql": "SELECT COUNT(*) AS late_milestones FROM milestones WHERE actual_date IS NOT NULL AND actual_date > planned_date",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 2.1
+    "seconds": 2.5
   },
   {
     "id": 18,
     "difficulty": 2,
     "question": "What was the average number of workers per day at Kota Metro Mall in October?",
     "ref_sql": "SELECT AVG(d.workers_present) FROM daily_logs d JOIN sites s ON s.id=d.site_id WHERE s.name='Kota Metro Mall' AND d.log_date BETWEEN '2026-10-01' AND '2026-10-31'",
-    "generated_sql": "SELECT AVG(dl.workers_present) AS average_workers FROM daily_logs dl JOIN sites s ON dl.site_id = s.id WHERE s.name = 'Kota Metro Mall' AND dl.log_date BETWEEN '2026-10-01' AND '2026-10-31'",
+    "generated_sql": "SELECT AVG(dl.workers_present) AS avg_workers FROM daily_logs dl JOIN sites s ON dl.site_id = s.id WHERE s.name = 'Kota Metro Mall' AND dl.log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 6.7
+    "seconds": 1.9
   },
   {
     "id": 19,
@@ -241,67 +204,20 @@
     "ref_sql": "SELECT SUM(d.hours_worked) FROM daily_logs d JOIN sites s ON s.id=d.site_id WHERE s.name='Jodhpur Tech Park' AND d.log_date BETWEEN '2026-10-25' AND '2026-10-31'",
     "generated_sql": "SELECT SUM(dl.hours_worked) AS total_labour_hours FROM daily_logs dl JOIN sites s ON dl.site_id = s.id WHERE s.name = 'Jodhpur Tech Park' AND dl.log_date BETWEEN '2026-10-25' AND '2026-10-31'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 3.0
+    "seconds": 4.7
   },
   {
     "id": 20,
     "difficulty": 2,
     "question": "Rank sites by total labour hours in October, highest first.",
     "ref_sql": "SELECT s.name, SUM(d.hours_worked) FROM daily_logs d JOIN sites s ON s.id=d.site_id WHERE d.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name ORDER BY 2 DESC",
-    "generated_sql": "WITH site_hours AS ( SELECT s.name AS site_name, SUM(dl.hours_worked) AS total_hours FROM daily_logs dl JOIN sites s ON dl.site_id = s.id WHERE dl.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name ) SELECT site_name, total_hours, RANK() OVER (ORDER BY total_hours DESC) AS rank FROM site_hours ORDER BY total_hours DESC",
-    "passed": false,
+    "generated_sql": "WITH total AS ( SELECT dl.site_id, SUM(dl.hours_worked) AS total_hours FROM daily_logs dl WHERE dl.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY dl.site_id ) SELECT s.name AS site, total.total_hours, RANK() OVER (ORDER BY total.total_hours DESC) AS rank FROM total JOIN sites s ON s.id = total.site_id ORDER BY total.total_hours DESC",
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "Jaipur Riverside Towers",
-        12216.5
-      ],
-      [
-        "Sikar Medical College Block",
-        11300.0
-      ],
-      [
-        "Kota Metro Mall",
-        10691.0
-      ],
-      [
-        "Jodhpur Tech Park",
-        9512.5
-      ],
-      [
-        "Bikaner Logistics Hub",
-        8135.5
-      ]
-    ],
-    "got": [
-      [
-        "Jaipur Riverside Towers",
-        12216.5,
-        1.0
-      ],
-      [
-        "Sikar Medical College Block",
-        11300.0,
-        2.0
-      ],
-      [
-        "Kota Metro Mall",
-        10691.0,
-        3.0
-      ],
-      [
-        "Jodhpur Tech Park",
-        9512.5,
-        4.0
-      ],
-      [
-        "Bikaner Logistics Hub",
-        8135.5,
-        5.0
-      ]
-    ],
-    "seconds": 4.5
+    "seconds": 2.1
   },
   {
     "id": 21,
@@ -310,6 +226,7 @@
     "ref_sql": "SELECT COUNT(*) FROM daily_logs d JOIN sites s ON s.id=d.site_id WHERE s.name='Alwar Greens Apartments' AND d.log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "generated_sql": "SELECT COUNT(*) AS working_days FROM daily_logs dl JOIN sites s ON dl.site_id = s.id WHERE s.name = 'Alwar Greens Apartments' AND dl.log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
     "seconds": 1.9
   },
@@ -320,8 +237,9 @@
     "ref_sql": "SELECT SUM(cost_inr) FROM material_usage WHERE material='cement' AND log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "generated_sql": "SELECT SUM(cost_inr) AS total_cement_cost FROM material_usage WHERE material='cement' AND log_date BETWEEN '2026-10-01' AND '2026-10-31'",
     "passed": true,
+    "passed_strict": true,
     "error": null,
-    "seconds": 1.9
+    "seconds": 2.1
   },
   {
     "id": 23,
@@ -329,20 +247,10 @@
     "question": "Which material has cost the most overall?",
     "ref_sql": "SELECT material FROM material_usage GROUP BY material ORDER BY SUM(cost_inr) DESC LIMIT 1",
     "generated_sql": "SELECT material, SUM(cost_inr) AS total_cost FROM material_usage GROUP BY material ORDER BY total_cost DESC LIMIT 1",
-    "passed": false,
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "steel"
-      ]
-    ],
-    "got": [
-      [
-        "steel",
-        10049529.6
-      ]
-    ],
-    "seconds": 2.6
+    "seconds": 2.1
   },
   {
     "id": 24,
@@ -350,20 +258,10 @@
     "question": "Which site used the most steel in September, in kg?",
     "ref_sql": "SELECT s.name FROM material_usage u JOIN sites s ON s.id=u.site_id WHERE u.material='steel' AND u.log_date BETWEEN '2026-09-01' AND '2026-09-30' GROUP BY s.name ORDER BY SUM(u.qty) DESC LIMIT 1",
     "generated_sql": "WITH steel_usage AS (SELECT s.name, SUM(mu.qty) AS total_steel_kg FROM material_usage mu JOIN sites s ON mu.site_id = s.id WHERE mu.material = 'steel' AND mu.unit = 'kg' AND mu.log_date BETWEEN '2026-09-01' AND '2026-09-30' GROUP BY s.name) SELECT name, total_steel_kg FROM steel_usage ORDER BY total_steel_kg DESC LIMIT 1",
-    "passed": false,
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "Jaipur Riverside Towers"
-      ]
-    ],
-    "got": [
-      [
-        "Jaipur Riverside Towers",
-        11663.4
-      ]
-    ],
-    "seconds": 2.6
+    "seconds": 2.2
   },
   {
     "id": 25,
@@ -371,19 +269,9 @@
     "question": "Which site spent the most on materials in October?",
     "ref_sql": "SELECT s.name FROM material_usage u JOIN sites s ON s.id=u.site_id WHERE u.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name ORDER BY SUM(u.cost_inr) DESC LIMIT 1",
     "generated_sql": "SELECT s.name, SUM(mu.cost_inr) AS total_spent FROM material_usage mu JOIN sites s ON mu.site_id = s.id WHERE mu.log_date BETWEEN '2026-10-01' AND '2026-10-31' GROUP BY s.name ORDER BY total_spent DESC LIMIT 1",
-    "passed": false,
+    "passed": true,
+    "passed_strict": false,
     "error": null,
-    "expected": [
-      [
-        "Sikar Medical College Block"
-      ]
-    ],
-    "got": [
-      [
-        "Sikar Medical College Block",
-        1582068.0
-      ]
-    ],
-    "seconds": 2.6
+    "seconds": 2.1
   }
 ]
