@@ -59,9 +59,35 @@ backend/eval/   25 questions + runner        backend/tests/  guard tests
 frontend/src/   App, SiteMap, SitePanel, AskBox
 ```
 
+## Choosing the LLM provider
+
+By default the app uses Claude (`ANTHROPIC_API_KEY`). To use a free provider instead, set `LLM_PROVIDER`:
+
+| Provider | Variables | Free key |
+|---|---|---|
+| Groq | `LLM_PROVIDER=groq`, `GROQ_API_KEY=...` | console.groq.com |
+| Gemini | `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=...` | aistudio.google.com/apikey |
+| Any OpenAI-compatible API | `LLM_PROVIDER=openai_compat`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | |
+
+Set `LLM_MODEL` to change the model. Free-tier model names change, so if you see a "model not found" error, pick a current one from the provider's model list.
+Eval accuracy depends on the model, so always report the score together with the model name.
+
 ## Ideas to extend
 
 - Replace the seed with real data entry (a simple form for daily logs and photo upload to S3).
 - Cache weekly summaries in a table and regenerate on a schedule.
 - Add a "wrong answer" feedback button on Ask and log those questions as new eval cases.
 - Add a second eval layer: LLM-as-judge on the narrated answer vs. the rows.
+
+## Deploy a live demo (free tiers)
+
+| Piece | Host | Settings |
+|---|---|---|
+| Database | Neon | Copy the connection string, change the start to `postgresql+psycopg://` |
+| Backend | Render (Web Service) | Root dir `backend` · build `pip install -r requirements.txt` · start `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Frontend | Vercel | Root dir `frontend` · env `VITE_API_URL=https://<your-render-url>` |
+
+Backend environment variables: `DATABASE_URL`, `ANTHROPIC_API_KEY`, `CORS_ORIGINS=https://<your-vercel-url>`.
+Optional: `ASK_PER_IP_LIMIT` (default 10 per hour), `ASK_DAILY_LIMIT` (default 200 per day).
+Seed the hosted database once from your own computer: set `DATABASE_URL` to the Neon string, then `python -m app.seed`.
+The free Render service sleeps when idle, so the first load can take about 30 seconds.

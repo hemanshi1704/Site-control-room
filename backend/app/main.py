@@ -1,17 +1,26 @@
 from datetime import timedelta
 
-from fastapi import FastAPI, HTTPException
+import os
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from . import llm, qa
+from . import llm, qa, ratelimit
 from .config import AS_OF
 from .db import engine
 
 app = FastAPI(title="Site Control Room")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
+# Comma-separated list, e.g. CORS_ORIGINS=https://site-control-room.vercel.app
+_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_origins,
                    allow_methods=["*"], allow_headers=["*"])
+
+
+@app.get("/api/health")
+def health():
+    return {"ok": True}
 
 _summary_cache: dict[int, str] = {}
 
@@ -93,5 +102,11 @@ class AskBody(BaseModel):
 
 
 @app.post("/api/ask")
-def ask(body: AskBody):
+def ask(body: AskBody, request: Request):
+    # Behind Render's proxy the real client IP is the first X-Forwarded-For entry.
+    fwd = request.headers.get("x-forwarded-for")
+    ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    blocked = ratelimit.check(ip)
+    if blocked:
+        raise HTTPException(429, blocked)
     return qa.ask(body.question.strip())
